@@ -23,21 +23,22 @@ const PIECE_SYMBOLS = {
 };
 
 const PIECE_VALUES = {
-  k: 10000,
-  r: 500,
-  c: 300,
-  n: 270,
-  b: 130,
-  a: 120,
-  p: 70,
+  k: 12000,
+  r: 600,
+  c: 320,
+  n: 300,
+  b: 140,
+  a: 130,
+  p: 80,
 };
 
 const DIFFICULTY = {
-  easy: { depth: 1, randomness: 0.55 },
-  medium: { depth: 2, randomness: 0.2 },
-  hard: { depth: 3, randomness: 0 },
+  easy: { depth: 2, randomness: 0.35 },
+  medium: { depth: 3, randomness: 0.1 },
+  hard: { depth: 4, randomness: 0 },
 };
 
+const CENTER_COLS = new Set([3, 4, 5]);
 let state = {};
 
 function createInitialBoard() {
@@ -209,8 +210,8 @@ function isInCheck(board, color) {
   for (let r = 0; r < 10; r += 1) {
     for (let c = 0; c < 9; c += 1) {
       const p = board[r][c];
-      if (p && p.color === enemy) {
-        if (canPieceMove(board, { r, c }, king)) return true;
+      if (p && p.color === enemy && canPieceMove(board, { r, c }, king)) {
+        return true;
       }
     }
   }
@@ -222,6 +223,17 @@ function makeMove(board, from, to) {
   next[to.r][to.c] = next[from.r][from.c];
   next[from.r][from.c] = null;
   return next;
+}
+
+function movePriority(board, move) {
+  const mover = board[move.from.r][move.from.c];
+  const target = board[move.to.r][move.to.c];
+  let score = 0;
+
+  if (target) score += PIECE_VALUES[target.type] * 10 - PIECE_VALUES[mover.type];
+  if (CENTER_COLS.has(move.to.c)) score += 15;
+  if (mover.type === "p" && crossedRiver(mover.color, move.to.r)) score += 30;
+  return score;
 }
 
 function getAllLegalMoves(board, color) {
@@ -243,6 +255,7 @@ function getAllLegalMoves(board, color) {
       }
     }
   }
+  moves.sort((a, b) => movePriority(board, b) - movePriority(board, a));
   return moves;
 }
 
@@ -252,11 +265,22 @@ function evaluate(board, aiColor) {
     for (let c = 0; c < 9; c += 1) {
       const p = board[r][c];
       if (!p) continue;
+
       let value = PIECE_VALUES[p.type];
-      if (p.type === "p" && crossedRiver(p.color, r)) value += 20;
-      score += p.color === aiColor ? value : -value;
+      if (p.type === "p" && crossedRiver(p.color, r)) value += 35;
+      if (p.type === "n" && CENTER_COLS.has(c)) value += 20;
+      if (p.type === "r" && CENTER_COLS.has(c)) value += 8;
+
+      const side = p.color === aiColor ? 1 : -1;
+      score += side * value;
     }
   }
+
+  const aiMoves = getAllLegalMoves(board, aiColor).length;
+  const enemyColor = aiColor === "r" ? "b" : "r";
+  const enemyMoves = getAllLegalMoves(board, enemyColor).length;
+  score += (aiMoves - enemyMoves) * 2;
+
   return score;
 }
 
@@ -265,7 +289,7 @@ function minimax(board, depth, alpha, beta, currentColor, aiColor) {
   if (depth === 0 || moves.length === 0) {
     if (moves.length === 0) {
       if (isInCheck(board, currentColor)) {
-        return { score: currentColor === aiColor ? -99999 : 99999, move: null };
+        return { score: currentColor === aiColor ? -999999 : 999999, move: null };
       }
       return { score: 0, move: null };
     }
@@ -310,7 +334,7 @@ function chooseAIMove() {
   if (!moves.length) return null;
 
   if (Math.random() < config.randomness) {
-    return moves[Math.floor(Math.random() * moves.length)];
+    return moves[Math.floor(Math.random() * Math.min(6, moves.length))];
   }
 
   return minimax(state.board, config.depth, -Infinity, Infinity, state.aiSide, state.aiSide).move;
@@ -328,11 +352,9 @@ function applyMove(from, to) {
   const legalMoves = getAllLegalMoves(state.board, enemy);
   if (legalMoves.length === 0) {
     state.gameOver = true;
-    if (isInCheck(state.board, enemy)) {
-      statusText.textContent = `${piece.color === "r" ? "红方" : "黑方"}将死获胜！`;
-    } else {
-      statusText.textContent = "和棋（无合法走法）";
-    }
+    statusText.textContent = isInCheck(state.board, enemy)
+      ? `${piece.color === "r" ? "红方" : "黑方"}将死获胜！`
+      : "和棋（无合法走法）";
   } else if (target?.type === "k") {
     state.gameOver = true;
     statusText.textContent = `${piece.color === "r" ? "红方" : "黑方"}吃将获胜！`;
@@ -343,7 +365,6 @@ function applyMove(from, to) {
 
 function handleCellClick(r, c) {
   if (state.gameOver) return;
-
   if (state.mode === "pve" && state.turn === state.aiSide) return;
 
   const piece = state.board[r][c];
@@ -402,7 +423,7 @@ function maybeAIMove() {
     }
     applyMove(move.from, move.to);
     render();
-  }, 300);
+  }, 280);
 }
 
 function getValidTargets(from) {
@@ -418,6 +439,15 @@ function getValidTargets(from) {
   return targets;
 }
 
+function edgeClasses(r, c) {
+  const classes = [];
+  if (r === 0) classes.push("no-top");
+  if (r === 9) classes.push("no-bottom");
+  if (c === 0) classes.push("no-left");
+  if (c === 8) classes.push("no-right");
+  return classes.join(" ");
+}
+
 function render() {
   boardEl.innerHTML = "";
   const validTargets = state.selected ? getValidTargets(state.selected) : new Set();
@@ -426,7 +456,7 @@ function render() {
     for (let c = 0; c < 9; c += 1) {
       const cell = document.createElement("button");
       cell.type = "button";
-      cell.className = "cell";
+      cell.className = `cell ${edgeClasses(r, c)}`;
       cell.addEventListener("click", () => handleCellClick(r, c));
 
       if (state.selected && state.selected.r === r && state.selected.c === c) {
@@ -438,9 +468,11 @@ function render() {
 
       const piece = state.board[r][c];
       if (piece) {
-        cell.textContent = PIECE_SYMBOLS[piece.color][piece.type];
-        cell.classList.add(`piece-${piece.color}`);
-        cell.title = `${piece.color === "r" ? "红" : "黑"}${PIECE_NAMES[piece.type]}`;
+        const pieceEl = document.createElement("span");
+        pieceEl.className = `piece piece-${piece.color}`;
+        pieceEl.textContent = PIECE_SYMBOLS[piece.color][piece.type];
+        pieceEl.title = `${piece.color === "r" ? "红" : "黑"}${PIECE_NAMES[piece.type]}`;
+        cell.appendChild(pieceEl);
       }
 
       boardEl.appendChild(cell);
