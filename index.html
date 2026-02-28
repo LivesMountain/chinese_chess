@@ -35,6 +35,7 @@
           </select>
         </label>
 
+        <button id="undoBtn">悔棋</button>
         <button id="restartBtn">重新开始</button>
       </section>
 
@@ -42,7 +43,10 @@
         <p id="statusText">红方先行</p>
       </section>
 
-      <section class="board-wrap"><section id="board" class="board" aria-label="中国象棋棋盘"></section></section>
+      <section class="board-wrap">
+        <section id="board" class="board" aria-label="中国象棋棋盘"></section>
+        <div class="river-text" aria-hidden="true"><span>楚河</span><span>汉界</span></div>
+      </section>
       <p class="tip">操作：点击棋子后再点击目标格子；再次点击已选棋子可取消选择。</p>
     </main>
 

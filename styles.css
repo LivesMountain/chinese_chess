@@ -44,17 +44,19 @@ button {
   background: #fff8e9;
 }
 
-button {
-  cursor: pointer;
-}
+button { cursor: pointer; }
 
 .status-panel {
   text-align: center;
   font-weight: 600;
   margin-bottom: 12px;
+  min-height: 24px;
 }
 
 .board-wrap {
+  position: relative;
+  width: calc(var(--grid-size) * 9 + 20px);
+  margin: 0 auto;
   overflow-x: auto;
 }
 
@@ -107,37 +109,30 @@ button {
   transform: translateY(-50%);
 }
 
-.cell.no-top::before {
+.cell.no-top::before,
+.cell.river-bottom::before {
   top: 50%;
   height: 50%;
 }
 
-.cell.no-bottom::before {
+.cell.no-bottom::before,
+.cell.river-top::before {
   top: 0;
   height: 50%;
 }
 
-.cell.no-left::after {
-  left: 50%;
-  width: 50%;
-}
-
-.cell.no-right::after {
-  left: 0;
-  width: 50%;
-}
+.cell.no-left::after { left: 50%; width: 50%; }
+.cell.no-right::after { left: 0; width: 50%; }
 
 .piece {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: 48px;
   height: 48px;
   border-radius: 50%;
   border: 2px solid #7b4c28;
   background: radial-gradient(circle at 30% 25%, #f8e9cb 0%, #e3bf87 62%, #c79a5e 100%);
-  box-shadow:
-    inset 0 0 0 2px rgba(123, 76, 40, 0.28),
-    0 2px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 0 0 2px rgba(123, 76, 40, 0.28), 0 2px 3px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,11 +140,15 @@ button {
   font-weight: 700;
 }
 
+.piece.animating {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  transition: transform 260ms ease-in-out;
+}
+
 .cell.selected .piece {
-  box-shadow:
-    inset 0 0 0 2px rgba(123, 76, 40, 0.28),
-    0 0 0 3px rgba(62, 133, 255, 0.65),
-    0 2px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 0 0 2px rgba(123, 76, 40, 0.28), 0 0 0 3px rgba(62, 133, 255, 0.65), 0 2px 3px rgba(0, 0, 0, 0.2);
 }
 
 .cell.valid::after,
@@ -157,12 +156,22 @@ button {
   background: #2f7ee0;
 }
 
-.piece-r {
-  color: #bf1f2f;
-}
+.piece-r { color: #bf1f2f; }
+.piece-b { color: #1a1a1a; }
 
-.piece-b {
-  color: #1a1a1a;
+.river-text {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: calc(var(--grid-size) * 4.5 + 10px);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 48px;
+  pointer-events: none;
+  font-size: 30px;
+  letter-spacing: 6px;
+  color: rgba(111, 69, 33, 0.75);
+  font-weight: 700;
 }
 
 .tip {
@@ -172,6 +181,4 @@ button {
   opacity: 0.8;
 }
 
-.hidden {
-  display: none;
-}
+.hidden { display: none; }
