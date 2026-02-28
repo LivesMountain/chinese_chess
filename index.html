@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>中国象棋 - 单人/双人</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>中国象棋</h1>
+      <section class="controls">
+        <label>
+          对战模式：
+          <select id="modeSelect">
+            <option value="pvp">双人对战</option>
+            <option value="pve">单人对战（人机）</option>
+          </select>
+        </label>
+
+        <label id="difficultyWrap" class="hidden">
+          电脑难度：
+          <select id="difficultySelect">
+            <option value="easy">简单</option>
+            <option value="medium">中等</option>
+            <option value="hard">困难</option>
+          </select>
+        </label>
+
+        <label id="sideWrap" class="hidden">
+          玩家执子：
+          <select id="sideSelect">
+            <option value="r">红方（先手）</option>
+            <option value="b">黑方（后手）</option>
+          </select>
+        </label>
+
+        <button id="restartBtn">重新开始</button>
+      </section>
+
+      <section class="status-panel">
+        <p id="statusText">红方先行</p>
+      </section>
+
+      <section id="board" class="board" aria-label="中国象棋棋盘"></section>
+      <p class="tip">操作：点击棋子后再点击目标格子；再次点击已选棋子可取消选择。</p>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
