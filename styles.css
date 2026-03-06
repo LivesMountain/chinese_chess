@@ -124,6 +124,27 @@ button { cursor: pointer; }
 .cell.no-left::after { left: 50%; width: 50%; }
 .cell.no-right::after { left: 0; width: 50%; }
 
+
+.palace-line {
+  position: absolute;
+  width: calc(var(--grid-size) * 2.83);
+  height: 2px;
+  background: var(--board-line);
+  left: 50%;
+  top: 50%;
+  transform-origin: center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.palace-line.diag-left {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.palace-line.diag-right {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
 .piece {
   position: relative;
   z-index: 2;

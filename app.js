@@ -15,9 +15,9 @@ const PIECE_SYMBOLS = {
 };
 const PIECE_VALUES = { k: 12000, r: 600, c: 320, n: 300, b: 140, a: 130, p: 80 };
 const DIFFICULTY = {
-  easy: { depth: 2, randomness: 0.35 },
-  medium: { depth: 3, randomness: 0.1 },
-  hard: { depth: 4, randomness: 0 },
+  easy: { depth: 2, randomness: 0.28 },
+  medium: { depth: 4, randomness: 0.06 },
+  hard: { depth: 5, randomness: 0 },
 };
 const CENTER_COLS = new Set([3, 4, 5]);
 
@@ -171,6 +171,17 @@ function getAllLegalMoves(board, color) {
   return moves;
 }
 
+function boardKey(board, currentColor, depth) {
+  let key = `${currentColor}|${depth}|`;
+  for (let r = 0; r < 10; r += 1) {
+    for (let c = 0; c < 9; c += 1) {
+      const p = board[r][c];
+      key += p ? `${p.color}${p.type}` : "..";
+    }
+  }
+  return key;
+}
+
 function evaluate(board, aiColor) {
   let score = 0;
   for (let r = 0; r < 10; r += 1) {
@@ -181,29 +192,46 @@ function evaluate(board, aiColor) {
       if (p.type === "p" && crossedRiver(p.color, r)) value += 35;
       if (p.type === "n" && CENTER_COLS.has(c)) value += 20;
       if (p.type === "r" && CENTER_COLS.has(c)) value += 8;
+      if (p.type === "k" && isInCheck(board, p.color)) value -= 25;
       score += p.color === aiColor ? value : -value;
     }
   }
+
   const enemy = aiColor === "r" ? "b" : "r";
-  score += (getAllLegalMoves(board, aiColor).length - getAllLegalMoves(board, enemy).length) * 2;
+  const aiMoves = getAllLegalMoves(board, aiColor);
+  const enemyMoves = getAllLegalMoves(board, enemy);
+  score += (aiMoves.length - enemyMoves.length) * 2.5;
+  if (isInCheck(board, enemy)) score += 40;
+  if (isInCheck(board, aiColor)) score -= 40;
   return score;
 }
 
-function minimax(board, depth, alpha, beta, currentColor, aiColor) {
+function minimax(board, depth, alpha, beta, currentColor, aiColor, cache) {
+  const key = boardKey(board, currentColor, depth);
+  const cached = cache.get(key);
+  if (cached) return cached;
+
   const moves = getAllLegalMoves(board, currentColor);
   if (depth === 0 || moves.length === 0) {
+    let result;
     if (!moves.length) {
-      if (isInCheck(board, currentColor)) return { score: currentColor === aiColor ? -999999 : 999999, move: null };
-      return { score: 0, move: null };
+      if (isInCheck(board, currentColor)) {
+        result = { score: currentColor === aiColor ? -999999 : 999999, move: null };
+      } else {
+        result = { score: 0, move: null };
+      }
+    } else {
+      result = { score: evaluate(board, aiColor), move: null };
     }
-    return { score: evaluate(board, aiColor), move: null };
+    cache.set(key, result);
+    return result;
   }
 
   let bestMove = null;
   if (currentColor === aiColor) {
     let best = -Infinity;
     for (const move of moves) {
-      const score = minimax(makeMove(board, move.from, move.to), depth - 1, alpha, beta, currentColor === "r" ? "b" : "r", aiColor).score;
+      const score = minimax(makeMove(board, move.from, move.to), depth - 1, alpha, beta, currentColor === "r" ? "b" : "r", aiColor, cache).score;
       if (score > best) {
         best = score;
         bestMove = move;
@@ -211,12 +239,14 @@ function minimax(board, depth, alpha, beta, currentColor, aiColor) {
       alpha = Math.max(alpha, best);
       if (beta <= alpha) break;
     }
-    return { score: best, move: bestMove };
+    const result = { score: best, move: bestMove };
+    cache.set(key, result);
+    return result;
   }
 
   let best = Infinity;
   for (const move of moves) {
-    const score = minimax(makeMove(board, move.from, move.to), depth - 1, alpha, beta, currentColor === "r" ? "b" : "r", aiColor).score;
+    const score = minimax(makeMove(board, move.from, move.to), depth - 1, alpha, beta, currentColor === "r" ? "b" : "r", aiColor, cache).score;
     if (score < best) {
       best = score;
       bestMove = move;
@@ -224,15 +254,18 @@ function minimax(board, depth, alpha, beta, currentColor, aiColor) {
     beta = Math.min(beta, best);
     if (beta <= alpha) break;
   }
-  return { score: best, move: bestMove };
+  const result = { score: best, move: bestMove };
+  cache.set(key, result);
+  return result;
 }
 
 function chooseAIMove() {
   const config = DIFFICULTY[state.difficulty] ?? DIFFICULTY.easy;
   const moves = getAllLegalMoves(state.board, state.aiSide);
   if (!moves.length) return null;
-  if (Math.random() < config.randomness) return moves[Math.floor(Math.random() * Math.min(6, moves.length))];
-  return minimax(state.board, config.depth, -Infinity, Infinity, state.aiSide, state.aiSide).move;
+  if (Math.random() < config.randomness) return moves[Math.floor(Math.random() * Math.min(4, moves.length))];
+  const cache = new Map();
+  return minimax(state.board, config.depth, -Infinity, Infinity, state.aiSide, state.aiSide, cache).move;
 }
 
 function updateStatus(text) {
@@ -429,6 +462,15 @@ function render() {
 
       if (state.selected?.r === r && state.selected?.c === c) cell.classList.add("selected");
       if (validTargets.has(`${r},${c}`)) cell.classList.add("valid");
+
+      if ((r === 1 || r === 8) && c === 4) {
+        const palaceLine1 = document.createElement("span");
+        palaceLine1.className = "palace-line diag-left";
+        const palaceLine2 = document.createElement("span");
+        palaceLine2.className = "palace-line diag-right";
+        cell.appendChild(palaceLine1);
+        cell.appendChild(palaceLine2);
+      }
 
       const piece = state.board[r][c];
       if (piece) {
